@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cyberbreach-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cyberbreach
+      POSTGRES_PASSWORD: cyberbreach
+      POSTGRES_DB: cyberbreach
+    ports:
+      - "5432:5432"
+    volumes:
+      - cyberbreach-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cyberbreach"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  cyberbreach-pgdata:

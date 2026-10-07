@@ -1,0 +1,308 @@
+/**
+ * Deterministic incident templates — the scripted attack library.
+ * Everything is fictional and educational.
+ */
+import type { Incident, IncidentActionKind } from "../../types/game";
+
+export interface IncidentTemplate
+  extends Omit<Incident, "id" | "createdAt" | "expiresAt" | "status" | "escalationLevel"> {
+  templateId: string;
+}
+
+export const INCIDENT_TEMPLATES: IncidentTemplate[] = [
+  {
+    templateId: "inc-susp-login",
+    threatType: "SUSPICIOUS_LOGIN",
+    severity: "HIGH",
+    title: "Suspicious login attempts",
+    description:
+      "Multiple failed authentication attempts have been detected against a workstation: 37 failed logins from 185.203.44.21 in under 3 minutes, targeting PC-03 (192.168.1.13).",
+    source: "185.203.44.21 (external)",
+    sourceIp: "185.203.44.21",
+    attempts: 37,
+    targetDeviceId: "pc-03",
+    targetHostname: "PC-03",
+    timeLimitSec: 0,
+    recommendedActions: ["INVESTIGATE", "BLOCK_SOURCE", "ISOLATE_DEVICE", "IGNORE"],
+    hint: "Automated attempts from one external host: investigate to confirm, then block the source and monitor PC-03.",
+  },
+  {
+    templateId: "inc-brute-force",
+    threatType: "BRUTE_FORCE",
+    severity: "HIGH",
+    title: "Brute-force attack on WEB-01",
+    description:
+      "WEB-01 (10.0.1.10) is receiving ~40 login attempts/sec from 203.0.113.88. Service latency is climbing. A firewall block will stop the flood.",
+    source: "203.0.113.88 (external)",
+    sourceIp: "203.0.113.88",
+    attempts: 1200,
+    targetDeviceId: "web-01",
+    targetHostname: "WEB-01",
+    timeLimitSec: 45,
+    recommendedActions: ["BLOCK_TRAFFIC", "ADD_FIREWALL_RULE"],
+    hint: "High-rate external logins against a public server: block the source at the firewall.",
+  },
+  {
+    templateId: "inc-port-scan",
+    threatType: "PORT_SCAN",
+    severity: "LOW",
+    title: "Port scan detected",
+    description:
+      "Sequential connection attempts across 200+ ports observed from 198.51.100.77. Reconnaissance usually precedes a targeted attack.",
+    source: "198.51.100.77 (external)",
+    sourceIp: "198.51.100.77",
+    attempts: 214,
+    targetDeviceId: "fw-01",
+    targetHostname: "FIREWALL",
+    timeLimitSec: 0,
+    recommendedActions: ["INVESTIGATE", "BLOCK_TRAFFIC"],
+    hint: "Scans are recon, not yet an intrusion. Investigate to log it, block if it persists.",
+  },
+  {
+    templateId: "inc-malware",
+    threatType: "MALWARE",
+    severity: "HIGH",
+    title: "Malware beaconing on PC-03",
+    description:
+      "PC-03 (192.168.1.13) is making periodic outbound connections to an unknown host every 60 seconds. Endpoint heuristics flag it as likely malware C2 beaconing.",
+    source: "PC-03 internal process",
+    sourceIp: "192.168.1.13",
+    targetDeviceId: "pc-03",
+    targetHostname: "PC-03",
+    timeLimitSec: 45,
+    recommendedActions: ["ISOLATE_DEVICE", "BLOCK_TRAFFIC"],
+    hint: "A workstation calling an unknown host on a timer: isolate the device first.",
+  },
+  {
+    templateId: "inc-exfil",
+    threatType: "DATA_EXFILTRATION",
+    severity: "CRITICAL",
+    title: "Suspicious outbound transfer",
+    description:
+      "Unusually large encrypted uploads (2.1 GB) from PC-03 to an external host. Possible data exfiltration in progress.",
+    source: "192.168.1.13 → external",
+    sourceIp: "192.168.1.13",
+    targetDeviceId: "pc-03",
+    targetHostname: "PC-03",
+    timeLimitSec: 30,
+    recommendedActions: ["ISOLATE_DEVICE", "BLOCK_TRAFFIC"],
+    hint: "Large unexplained uploads = exfiltration. Isolate immediately.",
+  },
+  {
+    templateId: "inc-ddos",
+    threatType: "DDOS",
+    severity: "CRITICAL",
+    title: "DDoS wave against firewall",
+    description:
+      "Inbound traffic is 40× baseline, sourced from thousands of hosts. The firewall is holding but server response times are degrading.",
+    source: "Distributed (botnet)",
+    sourceIp: "0.0.0.0/0",
+    targetDeviceId: "fw-01",
+    targetHostname: "FIREWALL",
+    timeLimitSec: 40,
+    recommendedActions: ["BLOCK_TRAFFIC", "INVESTIGATE"],
+    hint: "You cannot isolate the internet — block malicious traffic patterns and ride it out.",
+  },
+  {
+    templateId: "inc-unauth",
+    threatType: "UNAUTHORIZED_ACCESS",
+    severity: "HIGH",
+    title: "Unauthorized DB access",
+    description:
+      "A workstation account attempted direct access to DB-01 outside of maintenance hours using elevated privileges it should not have.",
+    source: "192.168.1.12 (PC-02)",
+    sourceIp: "192.168.1.12",
+    attempts: 8,
+    targetDeviceId: "db-01",
+    targetHostname: "DB-01",
+    timeLimitSec: 45,
+    recommendedActions: ["INVESTIGATE", "ISOLATE_DEVICE"],
+    hint: "Privilege misuse: investigate the account, then isolate the source workstation.",
+  },
+  {
+    templateId: "inc-phishing",
+    threatType: "PHISHING",
+    severity: "MEDIUM",
+    title: "Phishing email reported",
+    description:
+      "A user on PC-02 opened an attachment from an invoice-themed phishing email. The attachment tried to download a second-stage payload.",
+    source: "Email: invoices@example-billing.net",
+    sourceIp: "192.0.2.44",
+    targetDeviceId: "pc-02",
+    targetHostname: "PC-02",
+    timeLimitSec: 60,
+    recommendedActions: ["INVESTIGATE", "ISOLATE_DEVICE"],
+    hint: "Phishing starts at the endpoint. Investigate, then isolate if the payload executed.",
+  },
+  {
+    templateId: "inc-ransomware",
+    threatType: "RANSOMWARE",
+    severity: "CRITICAL",
+    title: "Ransomware propagation detected",
+    description:
+      "FILE-01 shows mass file renames and a ransom note pattern. Encryption is spreading from PC-07's SMB session. Seconds matter.",
+    source: "PC-07 SMB session",
+    sourceIp: "192.168.1.17",
+    targetDeviceId: "file-01",
+    targetHostname: "FILE-01",
+    timeLimitSec: 25,
+    recommendedActions: ["ISOLATE_DEVICE", "BLOCK_TRAFFIC"],
+    hint: "Ransomware spreading over file shares: isolate the affected hosts NOW.",
+  },
+  {
+    templateId: "inc-m2-auth",
+    threatType: "BRUTE_FORCE",
+    severity: "HIGH",
+    title: "Brute-force attack on AUTH-01",
+    description:
+      "The authentication server AUTH-01 (10.0.1.30) is receiving coordinated login attempts from 185.203.44.21 — over 900 tries in the last minute across multiple service accounts.",
+    source: "185.203.44.21 (external)",
+    sourceIp: "185.203.44.21",
+    attempts: 900,
+    targetDeviceId: "auth-01",
+    targetHostname: "AUTH-01",
+    timeLimitSec: 0,
+    recommendedActions: ["INVESTIGATE", "BLOCK_SOURCE", "ISOLATE_DEVICE", "IGNORE"],
+    hint: "Coordinated guessing against the auth server: investigate the pattern, then block the source to protect logins.",
+  },
+  {
+    templateId: "inc-m2-creds",
+    threatType: "SUSPICIOUS_LOGIN",
+    severity: "MEDIUM",
+    title: "Credential-stuffing on PC-02",
+    description:
+      "PC-02 (192.168.1.12) shows bursts of failed logins from 91.77.13.88 rotating through username lists — the second prong of a coordinated attack.",
+    source: "91.77.13.88 (external)",
+    sourceIp: "91.77.13.88",
+    attempts: 140,
+    targetDeviceId: "pc-02",
+    targetHostname: "PC-02",
+    timeLimitSec: 0,
+    recommendedActions: ["INVESTIGATE", "BLOCK_SOURCE", "ISOLATE_DEVICE", "IGNORE"],
+    hint: "Same campaign, second source. Block 91.77.13.88 after confirming the pattern.",
+  },
+  {
+    templateId: "inc-m3-beacon",
+    threatType: "MALWARE",
+    severity: "HIGH",
+    title: "Malware beaconing on PC-07",
+    description:
+      "PC-07 (192.168.1.17) has started generating unusual outbound traffic: encrypted bursts to an unknown host every 45 seconds. Endpoint analysis flags probable malware.",
+    source: "PC-07 internal process",
+    sourceIp: "192.168.1.17",
+    targetDeviceId: "pc-07",
+    targetHostname: "PC-07",
+    timeLimitSec: 0,
+    recommendedActions: ["INVESTIGATE", "ISOLATE_DEVICE", "BLOCK_SOURCE", "IGNORE"],
+    hint: "Unknown host on a timer from a workstation: investigate the behavior, then isolate PC-07.",
+  },
+  {
+    templateId: "inc-m3-lateral",
+    threatType: "UNAUTHORIZED_ACCESS",
+    severity: "HIGH",
+    title: "Lateral movement toward FILE-01",
+    description:
+      "FILE-01 (10.0.1.20) is receiving SMB probes using PC-07's credentials. The infection is attempting simulated lateral movement to the file server.",
+    source: "192.168.1.17 (PC-07)",
+    sourceIp: "192.168.1.17",
+    attempts: 22,
+    targetDeviceId: "file-01",
+    targetHostname: "FILE-01",
+    timeLimitSec: 0,
+    recommendedActions: ["INVESTIGATE", "ISOLATE_DEVICE", "BLOCK_SOURCE", "IGNORE"],
+    hint: "Cut the bridgehead: isolating PC-07 stops the spread to FILE-01.",
+  },
+  {
+    templateId: "inc-m4-foothold",
+    threatType: "SUSPICIOUS_LOGIN",
+    severity: "MEDIUM",
+    title: "Foothold login on PC-02",
+    description:
+      "An attacker has gained access to internal workstation PC-02 (192.168.1.12) with a valid-but-stolen session from 91.77.13.88. First link in a lateral-movement chain.",
+    source: "91.77.13.88 (external)",
+    sourceIp: "91.77.13.88",
+    attempts: 11,
+    targetDeviceId: "pc-02",
+    targetHostname: "PC-02",
+    timeLimitSec: 0,
+    recommendedActions: ["INVESTIGATE", "ISOLATE_DEVICE", "BLOCK_SOURCE", "IGNORE"],
+    hint: "This is the entry point. Isolate PC-02 before the attacker pivots.",
+  },
+  {
+    templateId: "inc-m4-pivot",
+    threatType: "MALWARE",
+    severity: "HIGH",
+    title: "Pivot to PC-07 detected",
+    description:
+      "PC-07 (192.168.1.17) is executing tools dropped from PC-02's session and scanning the server segment. The attacker is moving laterally: PC-02 → PC-07.",
+    source: "192.168.1.12 (PC-02)",
+    sourceIp: "192.168.1.12",
+    targetDeviceId: "pc-07",
+    targetHostname: "PC-07",
+    timeLimitSec: 0,
+    recommendedActions: ["INVESTIGATE", "ISOLATE_DEVICE", "BLOCK_SOURCE", "IGNORE"],
+    hint: "Second hop confirmed. Isolate PC-07 to break the chain.",
+  },
+  {
+    templateId: "inc-m4-target",
+    threatType: "DATA_EXFILTRATION",
+    severity: "CRITICAL",
+    title: "Exfiltration staging on FILE-01",
+    description:
+      "Staged archives (4.7 GB) are being assembled on FILE-01 (10.0.1.20) for upload via PC-07's channel. Final stage: PC-02 → PC-07 → FILE-SERVER → out.",
+    source: "192.168.1.17 (PC-07)",
+    sourceIp: "192.168.1.17",
+    targetDeviceId: "file-01",
+    targetHostname: "FILE-01",
+    timeLimitSec: 0,
+    recommendedActions: ["ISOLATE_DEVICE", "BLOCK_SOURCE", "INVESTIGATE", "IGNORE"],
+    hint: "End of the chain — isolate FILE-01's attacker path and cut PC-07 off.",
+  },
+  {
+    templateId: "inc-insider",
+    threatType: "INSIDER_THREAT",
+    severity: "HIGH",
+    title: "Insider lateral movement",
+    description:
+      "A valid service account is accessing systems it never touches, copying archives to a USB-mapped share at 02:14 AM.",
+    source: "svc-backup account",
+    sourceIp: "192.168.1.12",
+    attempts: 14,
+    targetDeviceId: "db-02",
+    targetHostname: "DB-02",
+    timeLimitSec: 45,
+    recommendedActions: ["INVESTIGATE", "ISOLATE_DEVICE"],
+    hint: "Legitimate credentials, illegitimate behavior. Investigate to confirm, then isolate.",
+  },
+];
+
+/**
+ * Containment actions per template — the response that resolves the incident.
+ * INVESTIGATE is intentionally absent: it reveals intel but never contains.
+ * ISOLATE_DEVICE is always accepted as containment (with an operational cost
+ * applied by the engine) even where it is not the optimal answer.
+ */
+export const CORRECT_ACTIONS: Record<string, IncidentActionKind[]> = {
+  "inc-susp-login": ["BLOCK_SOURCE", "BLOCK_TRAFFIC", "ADD_FIREWALL_RULE"],
+  "inc-m2-auth": ["BLOCK_SOURCE", "BLOCK_TRAFFIC", "ADD_FIREWALL_RULE"],
+  "inc-m2-creds": ["BLOCK_SOURCE", "BLOCK_TRAFFIC", "ADD_FIREWALL_RULE"],
+  "inc-m3-beacon": ["ISOLATE_DEVICE"],
+  "inc-m3-lateral": ["ISOLATE_DEVICE", "BLOCK_SOURCE"],
+  "inc-m4-foothold": ["ISOLATE_DEVICE", "BLOCK_SOURCE"],
+  "inc-m4-pivot": ["ISOLATE_DEVICE"],
+  "inc-m4-target": ["ISOLATE_DEVICE", "BLOCK_SOURCE"],
+  "inc-brute-force": ["BLOCK_SOURCE", "BLOCK_TRAFFIC", "ADD_FIREWALL_RULE"],
+  "inc-port-scan": ["BLOCK_SOURCE", "BLOCK_TRAFFIC"],
+  "inc-malware": ["ISOLATE_DEVICE"],
+  "inc-exfil": ["ISOLATE_DEVICE", "BLOCK_SOURCE", "BLOCK_TRAFFIC"],
+  "inc-ddos": ["BLOCK_SOURCE", "BLOCK_TRAFFIC"],
+  "inc-unauth": ["ISOLATE_DEVICE"],
+  "inc-phishing": ["ISOLATE_DEVICE"],
+  "inc-ransomware": ["ISOLATE_DEVICE"],
+  "inc-insider": ["ISOLATE_DEVICE"],
+};
+
+/** Actions that contain but carry an operational trade-off. */
+export const SUBOPTIMAL_CONTAINMENT: Record<string, IncidentActionKind[]> = {
+  "inc-susp-login": ["ISOLATE_DEVICE"],
+};
