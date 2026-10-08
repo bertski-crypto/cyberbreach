@@ -1,6 +1,6 @@
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from "pg";
 import { newDb } from "pg-mem";
-import { env } from "../config/env.js";
+import { env, isProd } from "../config/env.js";
 import { logger } from "../utils/logger.js";
 
 export interface Db {
@@ -27,7 +27,18 @@ export async function db(): Promise<Db> {
   if (process.env.TEST_DB_MEM === "1" || env.testDbMem) return memDb();
   if (!pool) {
     if (!env.databaseUrl) throw new Error("DATABASE_URL is not set");
-    pool = new Pool({ connectionString: env.databaseUrl });
+    const wantsSsl =
+      env.databaseSsl === "require" ||
+      env.databaseSsl === "true" ||
+      (env.databaseSsl !== "disable" && isProd) ||
+      env.databaseUrl.toLowerCase().includes("sslmode=require");
+    pool = new Pool({
+      connectionString: env.databaseUrl,
+      max: Number(process.env.PGPOOL_MAX ?? 10),
+      idleTimeoutMillis: 30_000,
+      connectionTimeoutMillis: 5_000,
+      ...(wantsSsl ? { ssl: { rejectUnauthorized: false } } : {}),
+    });
     pool.on("error", (err) => logger.error("pg pool error", { message: String(err) }));
   }
   return pool;

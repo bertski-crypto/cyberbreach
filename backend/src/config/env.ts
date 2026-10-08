@@ -10,6 +10,8 @@ export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   port: Number(process.env.PORT ?? 4000),
   databaseUrl: process.env.DATABASE_URL ?? "",
+  // Cloud Postgres (Render/Supabase/Neon) typically needs SSL; allow explicit override.
+  databaseSsl: process.env.DATABASE_SSL ?? "",
   testDbMem: process.env.TEST_DB_MEM === "1",
   jwtSecret: required("JWT_SECRET", "dev-access-secret-change-me-32-chars-min"),
   jwtRefreshSecret: required("JWT_REFRESH_SECRET", "dev-refresh-secret-change-me-32-chars"),

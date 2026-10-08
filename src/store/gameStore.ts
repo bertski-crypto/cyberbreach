@@ -193,6 +193,7 @@ interface GameState {
   trainingRuns: TrainingRun[];
   activeMissionId: string | null;
   missionStartedAt: number | null;
+  missionSnapshot: MissionSnapshot | null;
   /** Countdown state for the active mission */
   missionTimeTotal: number;
   missionTimeLeft: number;
@@ -464,6 +465,7 @@ export const useGameStore = create<GameState>()((set, get) => {
     trainingRuns: Array.isArray(saved?.trainingRuns) ? saved.trainingRuns : [],
     activeMissionId: null,
     missionStartedAt: null,
+    missionSnapshot: null,
     missionTimeTotal: 0,
     missionTimeLeft: 0,
     missionElapsedSec: 0,
@@ -580,14 +582,7 @@ export const useGameStore = create<GameState>()((set, get) => {
         notify(`CRITICAL INCIDENT: ${crit} critical alert${crit > 1 ? "s" : ""} require immediate triage.`, "error");
       }
       const s = get();
-      (get as unknown as { _snapshot?: MissionSnapshot })._snapshot = {
-        score: s.score,
-        xp: s.xp,
-        threatsNeutralized: s.threatsNeutralized,
-        incorrectDecisions: s.incorrectDecisions,
-        totalResponseTimeSec: s.totalResponseTimeSec,
-        responsesCount: s.responsesCount,
-      };
+      set({ missionSnapshot: { score: s.score, xp: s.xp, threatsNeutralized: s.threatsNeutralized, incorrectDecisions: s.incorrectDecisions, totalResponseTimeSec: s.totalResponseTimeSec, responsesCount: s.responsesCount } });
     },
 
     playerSnapshot: () => {
@@ -680,7 +675,7 @@ export const useGameStore = create<GameState>()((set, get) => {
       const s = get();
       const mission = findMission(s, s.activeMissionId);
       if (!mission) return;
-      const snap = (get as unknown as { _snapshot?: MissionSnapshot })._snapshot;
+      const snap = get().missionSnapshot;
       const now = Date.now();
       const incidents = spawnIncidents(mission.incidentIds, now, get().scenarioOverrides);
       const targeted = new Set(incidents.map((i) => i.targetDeviceId));

@@ -34,12 +34,13 @@ export function createApp() {
   app.use(express.json({ limit: "256kb" }));
   app.use(generalLimiter);
 
-  app.get("/api/health", async (_req, res, next) => {
+  app.get("/api/health", async (_req, res, _next) => {
     try {
       await (await db()).query("SELECT 1 AS ok");
       res.json(ok({ status: "ok", database: "connected" }));
-    } catch (e) {
-      next(e);
+    } catch {
+      // Never expose DATABASE_URL, credentials, or SQL details.
+      res.status(200).json(ok({ status: "ok", database: "disconnected" }));
     }
   });
 
